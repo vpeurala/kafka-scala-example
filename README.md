@@ -83,7 +83,7 @@ Mikko decides to create his own certificate authority (CA) to sign his certs.
 A good name would be "Mikon sertifikaattivirasto", it sounds official. Short
 version of it can be "mikko-ca". First Mikko makes a certificate request.
 
-    openssl req -newkey rsa:2048 -sha1 -passout pass:mustikkapiirakka -keyout ssl/mikko-ca.key -out ssl/mikko-ca.csr -subj "/C=FI/ST=Uusimaa/L=Helsinki/O=Mikon paja/OU=Sertifikaattiosasto/CN=Mikon sertifikaattivirasto" -reqexts ext -batch -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[ext]\nbasicConstraints=CA:TRUE,pathlen:0")
+    openssl req -newkey rsa:2048 -sha1 -passout pass:mustikkapiirakka -keyout ssl/mikko-ca.key -out ssl/mikko-ca.csr -subj "/CN=Mikon sertifikaattivirasto" -reqexts ext -batch -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[ext]\nbasicConstraints=CA:TRUE,pathlen:0")
 
 Mikko checks that everything went fine and the key is a valid RSA key.
 
@@ -100,6 +100,45 @@ Everything looks good. Time to sign a self-signed certificate.
 Bwahahaa, all looking good! Mikko is a careful boy.
 
     openssl x509 -in ssl/mikko-ca.crt -text -noout
+
+Then generate a key for the Kafka broker.
+
+    openssl genrsa -aes256 -passout pass:eppunormaali -out ssl/kafka-broker.key 2048
+
+Verify.
+
+    openssl rsa -check -in ssl/kafka-broker.key -passin pass:eppunormaali
+
+Generate CSR... this is getting exciting now.
+
+    openssl req -new -sha256 -key ssl/kafka-broker.key -passin pass:eppunormaali -out ssl/kafka-broker.req -subj "/CN=kafka-broker" -reqexts san -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[san]\nsubjectAltName=DNS:kafka-broker\nextendedKeyUsage=serverAuth,clientAuth")
+
+Still verify.
+
+    openssl req -in ssl/kafka-broker.req -text -noout
+
+And then the money shot: sign the certificate request for kafka-broker with your
+own CA root cert!
+
+    openssl x509 -req -sha256 -CA ssl/mikko-ca.crt -CAkey ssl/mikko-ca.key -passin pass:mustikkapiirakka -in ssl/kafka-broker.req -out ssl/kafka-broker.crt -days 3650 -CAcreateserial
+
+...and verify.
+
+    openssl x509 -in ssl/kafka-broker.crt -text -noout
+
+Turn it into PKCS12 format:
+
+    openssl pkcs12 -export -in ssl/kafka-broker.crt -inkey ssl/kafka-broker.key -passin pass:eppunormaali -chain -CAfile ssl/mikko-ca.crt -name kafka-broker -out ssl/kafka-broker.p12 -passout pass:eppunormaali
+
+And from that, into a Java keystore:
+
+    keytool -importkeystore -srckeystore ssl/kafka-broker.p12 -srcstorepass eppunormaali -srcstoretype pkcs12 -destkeystore ssl/kafka-broker.keystore.jks -deststorepass eppunormaali -deststoretype pkcs12
+
+Verify that it contains an entry with no warnings:
+
+    keytool -list -keystore ssl/kafka-broker.keystore.jks -storepass eppunormaali
+
+
 
 Muhahahaa! The hackers will never get past this protection.
 
