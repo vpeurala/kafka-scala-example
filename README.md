@@ -5,8 +5,11 @@ follow along as you read.
 
 ## Prerequisites
 
-You need to have Docker Compose and the Kafka CLI tools installed.
+You need to have Docker Compose, OpenSSL and the Kafka CLI tools installed.
 I did this on a Mac, Windows support is not guaranteed.
+
+Then open a terminal and `cd` to the root of your local clone of this
+repository to follow along!
 
 ## Chapter 1: Looking for love online
 
@@ -76,9 +79,34 @@ technical skills to protect the Kafka broker!
 A username and a password? Nah, too easy for a determined hacker. This needs
 industrial-strength measures: SSL certificate authentication!
 
+Mikko decides to create his own certificate authority (CA) to sign his certs.
+A good name would be "Mikon sertifikaattivirasto", it sounds official. Short
+version of it can be "mikko-ca". First Mikko makes a certificate request.
+
+    openssl req -newkey rsa:2048 -sha1 -passout pass:mustikkapiirakka -keyout ssl/mikko-ca.key -out ssl/mikko-ca.csr -subj "/C=FI/ST=Uusimaa/L=Helsinki/O=Mikon paja/OU=Sertifikaattiosasto/CN=Mikon sertifikaattivirasto" -reqexts ext -batch -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[ext]\nbasicConstraints=CA:TRUE,pathlen:0")
+
+Mikko checks that everything went fine and the key is a valid RSA key.
+
+    openssl rsa -check -in ssl/mikko-ca.key -passin pass:mustikkapiirakka
+
+Because Mikko is a careful boy, he verifies the CSR too. 
+
+    openssl req -text -noout -verify -in ssl/mikko-ca.csr
+
+Everything looks good. Time to sign a self-signed certificate.
+
+    openssl x509 -req -in ssl/mikko-ca.csr -sha256 -days 3650 -passin pass:mustikkapiirakka -signkey ssl/mikko-ca.key -out ssl/mikko-ca.crt -extensions ext -extfile <(printf "\n[ext]\nbasicConstraints=CA:TRUE,pathlen:0")
+
+Bwahahaa, all looking good! Mikko is a careful boy.
+
+    openssl x509 -in ssl/mikko-ca.crt -text -noout
+
+Muhahahaa! The hackers will never get past this protection.
+
+
+
+
 Mikko updates his Docker Compose configuration a bit, and launches his new,
 more secure Kafka broker.
 
     docker-compose --file docker-compose-ssl-login.yml up
-
-To be continued...
