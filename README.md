@@ -138,6 +138,10 @@ Verify that it contains an entry with no warnings:
 
     keytool -list -keystore ssl/kafka-broker.keystore.jks -storepass eppunormaali
 
+Then create a TRUSTSTORE! BWAHAA!
+
+    keytool -import -keystore ssl/kafka-broker.truststore.jks -alias mikko-ca -file ssl/mikko-ca.crt -storepass eppunormaali -noprompt 
+
 
 
 Muhahahaa! The hackers will never get past this protection.
