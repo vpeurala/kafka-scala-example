@@ -62,7 +62,7 @@ Jenni presses `Ctrl+C` to stop the consumer and writes back to Mikko:
 
 Jenni laughs out aloud at her witty response, and logs out of Mikko's laptop.
 
-## Chapter 3: Build an impenetrable fortress
+## Chapter 3: Building an impenetrable fortress
 
 Later that night, Mikko checks if anybody has answered his message.
 
@@ -83,7 +83,7 @@ Mikko decides to create his own certificate authority (CA) to sign his certs.
 A good name would be "Mikon sertifikaattivirasto", it sounds official. Short
 version of it can be "mikko-ca". First Mikko makes a certificate request.
 
-    openssl req -newkey rsa:2048 -sha1 -passout pass:mustikkapiirakka -keyout ssl/mikko-ca.key -out ssl/mikko-ca.csr -subj "/CN=Mikon sertifikaattivirasto" -reqexts ext -batch -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[ext]\nbasicConstraints=CA:TRUE,pathlen:0")
+    openssl req -newkey rsa:2048 -sha256 -passout pass:mustikkapiirakka -keyout ssl/mikko-ca.key -out ssl/mikko-ca.csr -subj "/CN=mikkomulperi.fi" -reqexts ext -batch -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[ext]\nbasicConstraints=critical,CA:TRUE,pathlen:0")
 
 Mikko checks that everything went fine and the key is a valid RSA key.
 
@@ -95,7 +95,7 @@ Because Mikko is a careful boy, he verifies the CSR too.
 
 Everything looks good. Time to sign a self-signed certificate.
 
-    openssl x509 -req -in ssl/mikko-ca.csr -sha256 -days 3650 -passin pass:mustikkapiirakka -signkey ssl/mikko-ca.key -out ssl/mikko-ca.crt -extensions ext -extfile <(printf "\n[ext]\nbasicConstraints=CA:TRUE,pathlen:0")
+    openssl x509 -req -in ssl/mikko-ca.csr -sha256 -days 3650 -passin pass:mustikkapiirakka -signkey ssl/mikko-ca.key -out ssl/mikko-ca.crt -extensions ext -extfile <(printf "\n[ext]\nbasicConstraints=critical,CA:TRUE,pathlen:0")
 
 Bwahahaa, all looking good! Mikko is a careful boy.
 
@@ -103,15 +103,15 @@ Bwahahaa, all looking good! Mikko is a careful boy.
 
 Then generate a key for the Kafka broker.
 
-    openssl genrsa -aes256 -passout pass:eppunormaali -out ssl/kafka-broker.key 2048
+    openssl genrsa -aes128 -passout pass:eppunormaali -out ssl/kafka-broker.key 2048
 
-Verify.
+Verify. Verify everything, Mikko! Your hacker honor is in danger here.
 
     openssl rsa -check -in ssl/kafka-broker.key -passin pass:eppunormaali
 
 Generate CSR... this is getting exciting now.
 
-    openssl req -new -sha256 -key ssl/kafka-broker.key -passin pass:eppunormaali -out ssl/kafka-broker.req -subj "/CN=kafka-broker" -reqexts san -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[san]\nsubjectAltName=DNS:kafka-broker\nextendedKeyUsage=serverAuth,clientAuth")
+    openssl req -new -sha256 -key ssl/kafka-broker.key -passin pass:eppunormaali -out ssl/kafka-broker.req -subj "/CN=kafka-broker.mikkomulperi.fi" -reqexts san -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[san]\nsubjectAltName=DNS:kafka-broker.mikkomulperi.fi\nextendedKeyUsage=clientAuth,serverAuth\n")
 
 Still verify.
 
@@ -140,16 +140,118 @@ Verify that it contains an entry with no warnings:
 
 Then create a TRUSTSTORE! BWAHAA!
 
-    keytool -import -keystore ssl/kafka-broker.truststore.jks -alias mikko-ca -file ssl/mikko-ca.crt -storepass eppunormaali -noprompt 
-
-
+    keytool -import -keystore ssl/kafka-broker.truststore.jks -alias mikko-ca -file ssl/mikko-ca.crt -storepass eppunormaali -noprompt
 
 Muhahahaa! The hackers will never get past this protection.
 
+Mikko trashes the old Docker containers lying around. No need for them anymore! See what a shell scripting wizard Mikko is, by the way!
 
+    docker ps -a | tail -n +2 | awk '{print $1}' | xargs docker rm -f
 
+Now Mikko has to get in himself... so he needs a client certificate that the
+broker trusts.
+
+So he generates another key.
+
+    openssl req -newkey rsa:2048 -sha256 -passout pass:vainmikontiedossa -keyout ssl/kafka-client.key -out ssl/kafka-client.csr -subj "/CN=kafka-client.mikkomulperi.fi" -reqexts ext -batch -config <(printf "\ndistinguished_name=req_distinguished_name\n\n[req_distinguished_name]\nC=FI\nST=Uusimaa\nL=Helsinki\nO=Mikon paja\nOU=Sertifikaattiosasto\n\n[ext]\nextendedKeyUsage=clientAuth,serverAuth\n")
+
+Mikko checks that everything went fine and the key is a valid RSA key.
+
+    openssl rsa -check -in ssl/kafka-client.key -passin pass:vainmikontiedossa
+
+Because Mikko is a careful boy, he verifies the CSR too. 
+
+    openssl req -text -noout -verify -in ssl/kafka-client.csr
+
+And signs it with his devious self-made CA certificate. For 10 years.
+
+    openssl x509 -req -in ssl/kafka-client.csr -sha256 -days 3650 -passin pass:mustikkapiirakka -signkey ssl/mikko-ca.key -out ssl/kafka-client.crt
+
+TODO or is this better? 
+
+    openssl x509 -req -in ssl/kafka-client.csr -sha256 -days 3650 -passin pass:mustikkapiirakka -CA ssl/mikko-ca.crt -CAkey ssl/mikko-ca.key -out ssl/kafka-client.crt
+
+A careful boy get the worm:
+
+    openssl x509 -in ssl/kafka-client.crt -text -noout
+
+Produce the chain:
+
+    cat ssl/kafka-client.crt ssl/mikko-ca.crt > ssl/client-chain.pem
+
+Turn it into PKCS12 format: NOOOO!!!
+
+    openssl pkcs12 -export -in ssl/kafka-client.crt -inkey ssl/kafka-client.key -passin pass:vainmikontiedossa -chain ssl/client-chain.pem -CAfile ssl/mikko-ca.crt -name kafka-client -out ssl/kafka-client.p12 -passout pass:vainmikontiedossa
+
+Actually this way:
+
+    openssl pkcs12 -export -out ssl/kafka-client.p12 -inkey ssl/kafka-client.key -in ssl/kafka-client.crt -certfile ssl/mikko-ca.crt -passin pass:vainmikontiedossa -passout pass:vainmikontiedossa
+
+And from that, into a Java keystore:
+
+    keytool -importkeystore -srckeystore ssl/kafka-client.p12 -srcstorepass vainmikontiedossa -srcstoretype pkcs12 -destkeystore ssl/kafka-client.keystore.jks -deststorepass vainmikontiedossa -deststoretype pkcs12
+
+Verify that it contains an entry with no warnings:
+
+    keytool -list -keystore ssl/kafka-broker.keystore.jks -storepass eppunormaali
+
+Then create a TRUSTSTORE! BWAHAA!
+
+    keytool -import -keystore ssl/kafka-client.truststore.jks -alias mikko-ca -file ssl/mikko-ca.crt -storepass vainmikontiedossa -noprompt
 
 Mikko updates his Docker Compose configuration a bit, and launches his new,
 more secure Kafka broker.
 
-    docker-compose --file docker-compose-ssl-login.yml up
+    docker-compose --file docker-compose-ssl-login.yml up --detach
+
+Then Mikko tries to write a message to his dating site:
+
+    KAFKA_OPTS='-Djavax.net.debug=all' JAVA_OPTS='-Xmx4g javax.net.debug=all' kafka-console-producer --bootstrap-server localhost:9092 --topic inbound --producer.config client-ssl.properties
+
+Doesn't work... has to debug the connection with openssl.
+
+    openssl s_client -connect localhost:9092
+
+Hmm, it complains about a self signed certificate.
+
+    openssl s_client -connect localhost:9092 -CAfile ssl/mikko-ca.crt -cert ssl/kafka-client.crt -key ssl/kafka-client.key
+
+That one works, so there is something wrong when giving kafka-console-producer the certificate to use.
+
+    KAFKA_OPTS='-Djavax.net.debug=all' JAVA_OPTS='-Xmx4g javax.net.debug=all' kafka-console-producer --bootstrap-server kafka-broker.mikkomulperi.fi:9092 --topic inbound --producer.config client-ssl.properties
+
+Okay, a quick /etc/hosts trick never hurt anyone. Emojis here.
+
+    sudo vim /etc/hosts # ... and add kafka-broker.mikkomulperi.fi there, pointing to localhost.
+
+And now the reply to the mysterious stranger.
+
+    echo "Mitä ihmettä täällä tapahtuu? Kuka sä olet?" | kafka-console-producer --bootstrap-server kafka-broker.mikkomulperi.fi:9092 --topic treffipalsta --producer.config client-ssl.properties
+
+Some time later...
+
+## Chapter 4. Jenni's revenge
+
+Jenni comes back from her Krav Maga class and notices that there is a blinking red light on her dashboard.
+Something has happened in a computer she has taken over. She always installs monitoring software.
+
+It has something to do with Mikko's Kafka broker. Jenni logs in as root to Mikko's laptop, and tries to read the messages:
+
+    kafka-console-consumer --bootstrap-server kafka-broker.mikkomulperi.fi:9092 --topic treffipalsta
+
+Aha, it's somehow protected now. Let's see.
+
+5 seconds later Jenni finds Mikko's new `docker-compose-ssl-login.yml` file.
+
+Another 5 seconds later Jenni finds all Mikko's carefully constructed SSL certificates, private keys and other stuff under `ssl/` directory.
+
+What kind of fool is this?
+
+    kafka-console-consumer --bootstrap-server kafka-broker.mikkomulperi.fi:9092 --topic treffipalsta --consumer.config client-ssl.properties --from-beginning
+
+> Mitä ihmettä täällä tapahtuu? Kuka sä olet?
+
+Jenni laughs and takes a sip of coffee.
+
+    echo "I'm your worst nightmare. ;)" | kafka-console-producer --bootstrap-server kafka-broker.mikkomulperi.fi:9092 --topic treffipalsta --producer.config client-ssl.properties
+
