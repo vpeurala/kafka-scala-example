@@ -28,33 +28,26 @@ let product_l l =
       ([],1) l in
    List.hd r;;
 
-
-let read_lines name : string list =
+let read_lines (name:string) : string list =
   let ic = open_in name in
   let try_read () =
     try Some (input_line ic) with End_of_file -> None in
   let rec loop acc = match try_read () with
     | Some s -> loop (s :: acc)
     | None -> close_in ic; List.rev acc in
-  loop [];;
+  loop []
+;;
 
+let lines1 : string list = read_lines "input";;
 
-
-
-
-
-
-let lines = read_lines “input”;
-
-let numbers = List.map int_of_string lines;;
+let numbers = List.map int_of_string lines1;;
 
 let cartesians = cartesian numbers numbers;;
 
 let pairs = List.filter sums_to_2020 cartesians;;
 
 let (a, b) = List.hd pairs;;
-
-let part1 = a * b;;
+let part_1 = a * b;;
 
 type 'a tuple = 'a list;;
 
@@ -76,3 +69,8 @@ let rec product'' (l:'a list tuple) =
 let triples = List.filter (fun l -> sum_l l == 2020) (product'' [numbers;numbers;numbers]);;
 
 let part_2 = product_l (List.hd triples);;
+
+print_int part_1;;
+print_newline;;
+print_int part_2;;
+print_newline;;
