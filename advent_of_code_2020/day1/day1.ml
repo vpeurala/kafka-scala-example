@@ -1,3 +1,5 @@
+open Printf
+
 let cartesian l1 l2 =
   List.rev (
    List.fold_left
@@ -70,7 +72,4 @@ let triples = List.filter (fun l -> sum_l l == 2020) (product'' [numbers;numbers
 
 let part_2 = product_l (List.hd triples);;
 
-print_int part_1;;
-print_newline;;
-print_int part_2;;
-print_newline;;
+let () = printf "PART 1: %d\nPART 2: %d\n" part_1 part_2;;
