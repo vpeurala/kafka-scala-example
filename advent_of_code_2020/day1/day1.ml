@@ -14,21 +14,20 @@ let cartesian l1 l2 =
    []
    l1
  )
-;;
 
-let sums_to_2020 (a, b) = a + b == 2020;;
+let sums_to_2020 (a, b) = a + b == 2020
 
 let sum_l l =
    let (r,_) = List.fold_left
       (fun (a_l, a_i) x -> ((a_i + x) :: a_l , a_i+x))
       ([],0) l in
-   List.hd r;;
+   List.hd r
 
 let product_l l =
    let (r,_) = List.fold_left
       (fun (a_l, a_i) x -> ((a_i * x) :: a_l , a_i * x))
       ([],1) l in
-   List.hd r;;
+   List.hd r
 
 let read_lines (name:string) : string list =
   let ic = open_in name in
@@ -38,20 +37,20 @@ let read_lines (name:string) : string list =
     | Some s -> loop (s :: acc)
     | None -> close_in ic; List.rev acc in
   loop []
-;;
 
 let lines1 : string list = read_lines "input";;
 
-let numbers = List.map int_of_string lines1;;
+let numbers = List.map int_of_string lines1
 
-let cartesians = cartesian numbers numbers;;
+let cartesians = cartesian numbers numbers
 
-let pairs = List.filter sums_to_2020 cartesians;;
+let pairs = List.filter sums_to_2020 cartesians
 
-let (a, b) = List.hd pairs;;
-let part_1 = a * b;;
+let (a, b) = List.hd pairs
 
-type 'a tuple = 'a list;;
+let part_1 = a * b
+
+type 'a tuple = 'a list
 
 let rec product'' (l:'a list tuple) =
     let rec aux ~acc l1 l2 = match l1, l2 with
@@ -66,10 +65,9 @@ let rec product'' (l:'a list tuple) =
     | l1::tl ->
         let tail_product = product'' tl in
         aux ~acc:[] l1 tail_product
-;;
 
-let triples = List.filter (fun l -> sum_l l == 2020) (product'' [numbers;numbers;numbers]);;
+let triples = List.filter (fun l -> sum_l l == 2020) (product'' [numbers;numbers;numbers])
 
-let part_2 = product_l (List.hd triples);;
+let part_2 = product_l (List.hd triples)
 
-let () = printf "PART 1: %d\nPART 2: %d\n" part_1 part_2;;
+let () = printf "PART 1: %d\nPART 2: %d\n" part_1 part_2
